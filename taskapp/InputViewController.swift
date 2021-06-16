@@ -7,6 +7,7 @@
 
 import UIKit
 import RealmSwift
+import UserNotifications
 
 class InputViewController: UIViewController {
     @IBOutlet weak var titleTextField: UITextField!
@@ -40,7 +41,45 @@ class InputViewController: UIViewController {
             self.task.date = datePicker.date
             self.realm.add(self.task, update: .modified)
         }
+        
+        setNotification(task: self.task)
         super.viewDidDisappear(animated)
+    }
+    
+    func setNotification(task: Task) {
+        let content = UNMutableNotificationContent()
+        if(task.title == ""){
+            content.title = "（タイトルなし）"
+        }else{
+            content.title = task.title
+        }
+        
+        if task.contents == "" {
+            content.body = "(内容なし)"
+        } else {
+            content.body = task.contents
+        }
+        
+        content.sound = UNNotificationSound.default
+        
+        // タスクで登録した時間に通知をするようにする
+        let calendar = Calendar.current
+        let dateComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: task.date)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
+        let request = UNNotificationRequest(identifier: String(task.id), content: content, trigger: trigger)
+        
+        let center = UNUserNotificationCenter.current()
+        center.add(request, withCompletionHandler: {(error) in
+            print(error ?? "local notification OK")
+        })
+        
+        center.getPendingNotificationRequests(completionHandler: {(requests) in
+            for request in requests{
+                print("/---------------")
+                print(request)
+                print("---------------/")
+            }
+        })
     }
     
     /*
