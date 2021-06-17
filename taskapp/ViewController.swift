@@ -10,6 +10,7 @@ import RealmSwift
 import UserNotifications
 
 class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+    @IBOutlet weak var inputCategory: UITextField!
     @IBOutlet weak var tableView: UITableView!
     
     let realm = try! Realm()
@@ -18,19 +19,31 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     // 日付の近い順でソート：昇順
     // 以降内容をアップデートするとリスト内は自動的に更新される。
     var taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: true)
-    
+    var searchTasks: Results<Task>!
+
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
+        searchByKeyword(keyword: "")
+        
         tableView.delegate = self
         tableView.dataSource = self
+    }
+    
+    @objc func dismissKeyboard() {
+        // close keyboard
+        view.endEditing(true)
+    }
+
+    func searchByKeyword(keyword: String) {
+        searchTasks = taskArray.filter(NSPredicate(format: "category = %@", keyword))
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         let inputViewController: InputViewController = segue.destination as! InputViewController
         if(segue.identifier == "cellSegue"){
             let indexPath = self.tableView.indexPathForSelectedRow
-            inputViewController.task = taskArray[indexPath!.row]
+            inputViewController.task = searchTasks[indexPath!.row]
         }else{
             let task = Task()
             
@@ -44,13 +57,18 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        // DBの更新が完了する前にテーブルの更新が完了してしまうことが確認できる
         tableView.reloadData()
     }
     
+    @IBAction func searchCategory(_ sender: Any) {
+        dismissKeyboard()
+        searchByKeyword(keyword: inputCategory.text ?? "")
+        tableView.reloadData()
+      }
+    
     // count of items for tableView
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int{
-        return taskArray.count
+        return searchTasks.count
     }
 
     
@@ -60,7 +78,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         // 再利用可能なcellを得る
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
         
-        let task = taskArray[indexPath.row]
+        let task = searchTasks[indexPath.row]
         cell.textLabel?.text = task.title
         
         let formatter = DateFormatter()
@@ -85,14 +103,14 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             // 削除するタスクを取得する
-            let task = self.taskArray[indexPath.row]
+            let task = self.searchTasks[indexPath.row]
             // ローカル通知をキャンセルする
             let center = UNUserNotificationCenter.current()
             center.removePendingNotificationRequests(withIdentifiers: [String(task.id)])
 
             // delete from DB
             try! realm.write{
-                self.realm.delete(self.taskArray[indexPath.row])
+                self.realm.delete(self.searchTasks[indexPath.row])
                 tableView.deleteRows(at: [indexPath], with: .fade)
             }
             
