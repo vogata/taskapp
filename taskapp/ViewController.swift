@@ -14,11 +14,12 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     @IBOutlet weak var tableView: UITableView!
     
     let realm = try! Realm()
+    var token: NotificationToken?
+    
     var searchWord: String = ""
     
     // DB内のタスクが格納されるリスト。
     // 日付の近い順でソート：昇順
-    // 以降内容をアップデートするとリスト内は自動的に更新される。
     var taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: true)
     var searchTasks: Results<Task>!
 
@@ -29,6 +30,10 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         tableView.delegate = self
         tableView.dataSource = self
+    }
+    
+    deinit {
+      token?.invalidate()
     }
     
     @objc func dismissKeyboard() {
@@ -68,6 +73,16 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         tableView.reloadData()
+    }
+    
+    override func awakeFromNib() {
+      super.awakeFromNib()
+
+      // RealmのTodoリストを取得し，更新を監視
+      token =  taskArray.observe{ [weak self] _ in
+        self?.search()
+        self?.tableView?.reloadData()
+      }
     }
     
     @IBAction func searchCategory(_ sender: Any) {
