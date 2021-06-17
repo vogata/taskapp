@@ -14,6 +14,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     @IBOutlet weak var tableView: UITableView!
     
     let realm = try! Realm()
+    var searchWord: String = ""
     
     // DB内のタスクが格納されるリスト。
     // 日付の近い順でソート：昇順
@@ -36,7 +37,16 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
 
     func searchByKeyword(keyword: String) {
-        searchTasks = taskArray.filter(NSPredicate(format: "category = %@", keyword))
+        searchWord = keyword
+        search()
+    }
+    
+    func search() {
+        if(searchWord == ""){
+            searchTasks = taskArray
+        } else {
+            searchTasks = taskArray.filter(NSPredicate(format: "category = %@", searchWord))
+        }
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
